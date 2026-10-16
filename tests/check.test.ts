@@ -24,6 +24,20 @@ describe("check()", () => {
     assert.equal(env.PORT, 8080);
   });
 
+  test("rejects whitespace-only and non-finite numbers", () => {
+    for (const v of ["  ", "Infinity", "-Infinity", "abc"]) {
+      assert.throws(
+        () =>
+          check(
+            { N: { type: "number", required: true } },
+            { env: { N: v } },
+          ),
+        /must be a finite number/,
+        `expected "${v}" to be rejected`,
+      );
+    }
+  });
+
   test("coerces boolean true variants", () => {
     for (const v of ["true", "1", "yes", "on", "TRUE"]) {
       const env = check(

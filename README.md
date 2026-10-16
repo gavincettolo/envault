@@ -26,7 +26,7 @@ If validation fails, you get a clear, aggregated error — not a cascade of unde
 envault: 2 environment variables failed validation:
 
   ✗ Missing required variable "DATABASE_URL"
-  ✗ "PORT" must be a number (got "not-a-port")
+  ✗ "PORT" must be a finite number (got "not-a-port")
 ```
 
 ---

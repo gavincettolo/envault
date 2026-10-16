@@ -84,12 +84,13 @@ export function coerceAndValidate(
     }
 
     case "number": {
-      const n = Number(raw);
-      if (Number.isNaN(n)) {
+      // Number("  ") is 0 and Number("Infinity") is Infinity: reject both.
+      const n = raw.trim() === "" ? NaN : Number(raw);
+      if (!Number.isFinite(n)) {
         return {
           error: makeError(
             key,
-            `"${key}" must be a number (got "${isSecret ? "***" : raw}")`,
+            `"${key}" must be a finite number (got "${isSecret ? "***" : raw}")`,
             isSecret ? undefined : raw,
           ),
         };
