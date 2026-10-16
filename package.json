@@ -41,7 +41,7 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "test": "tsx --test tests/*.test.ts",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit && tsc -p tsconfig.test.json",
     "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
