@@ -151,6 +151,18 @@ describe("check()", () => {
     assert.equal(env.X, undefined);
   });
 
+  test("ignores inherited properties of options.env", () => {
+    const source = Object.create({ INHERITED: "from-prototype" }) as Record<
+      string,
+      string | undefined
+    >;
+    const env = check(
+      { INHERITED: { type: "string", default: "fallback" } },
+      { env: source },
+    );
+    assert.equal(env.INHERITED, "fallback");
+  });
+
   test("throws with all errors at once", () => {
     assert.throws(
       () =>

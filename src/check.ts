@@ -21,7 +21,11 @@ export function check<S extends Schema>(
 
   for (const key of Object.keys(schema)) {
     const field = schema[key] as FieldDef;
-    const raw = source[key];
+    // Only own properties: a plain-object `env` would otherwise expose
+    // inherited members such as `constructor` or `toString`.
+    const raw = Object.prototype.hasOwnProperty.call(source, key)
+      ? source[key]
+      : undefined;
 
     const outcome = coerceAndValidate(key, raw, field, options.environment);
 
