@@ -187,6 +187,25 @@ describe("check()", () => {
     assert.equal(received, "X");
   });
 
+  test("still throws when onError returns instead of throwing", () => {
+    let called = false;
+    assert.throws(
+      () =>
+        check(
+          { X: { type: "string", required: true } },
+          {
+            env: {},
+            // Simulates a JS caller (or a cast) violating the `never` contract.
+            onError: (() => {
+              called = true;
+            }) as unknown as (errors: unknown) => never,
+          },
+        ),
+      /Missing required variable "X"/,
+    );
+    assert.ok(called);
+  });
+
   test("masks secret values in errors", () => {
     assert.throws(
       () =>

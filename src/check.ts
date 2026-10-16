@@ -33,14 +33,13 @@ export function check<S extends Schema>(
   }
 
   if (errors.length > 0) {
-    if (options.onError) {
-      options.onError(errors);
-    } else {
-      const lines = errors.map((e) => `  ✗ ${e.message}`);
-      throw new Error(
-        `envault: ${errors.length} environment variable${errors.length > 1 ? "s" : ""} failed validation:\n\n${lines.join("\n")}\n`,
-      );
-    }
+    // onError is typed `=> never`, but a JS caller may return normally.
+    // Fall through to the default throw so a partial result never escapes.
+    options.onError?.(errors);
+    const lines = errors.map((e) => `  ✗ ${e.message}`);
+    throw new Error(
+      `envault: ${errors.length} environment variable${errors.length > 1 ? "s" : ""} failed validation:\n\n${lines.join("\n")}\n`,
+    );
   }
 
   return result as Env<S>;
