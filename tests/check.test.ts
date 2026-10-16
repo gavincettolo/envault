@@ -59,6 +59,28 @@ describe("check()", () => {
     }
   });
 
+  test("trims surrounding whitespace from boolean values", () => {
+    for (const [v, expected] of [
+      [" true ", true],
+      ["\tyes", true],
+      ["OFF ", false],
+    ] as const) {
+      const env = check(
+        { FLAG: { type: "boolean", required: true } },
+        { env: { FLAG: v } },
+      );
+      assert.equal(env.FLAG, expected, `expected ${expected} for "${v}"`);
+    }
+    assert.throws(
+      () =>
+        check(
+          { FLAG: { type: "boolean", required: true } },
+          { env: { FLAG: "   " } },
+        ),
+      /must be a boolean/,
+    );
+  });
+
   test("rejects invalid boolean", () => {
     assert.throws(
       () =>

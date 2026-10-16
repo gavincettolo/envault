@@ -271,7 +271,7 @@ Additional options per type:
 
 **Defaults are validated** like provided values: an enum default outside `values`, a number default outside `min`/`max`, a string default that fails `pattern`, an invalid `url` default, or one rejected by `validate` makes `check()` fail with a `(default value)` error.
 
-**Boolean coercion** accepts: `true / false`, `1 / 0`, `yes / no`, `on / off` (case-insensitive).
+**Boolean coercion** accepts: `true / false`, `1 / 0`, `yes / no`, `on / off` (case-insensitive, surrounding whitespace ignored).
 
 ---
 

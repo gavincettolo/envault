@@ -94,7 +94,8 @@ function coerce(key: string, raw: string, field: FieldDef): Outcome {
       return { value: raw.trim() === "" ? NaN : Number(raw) };
 
     case "boolean": {
-      const lower = raw.toLowerCase();
+      // Trim like number does, so "true " from a hand-edited .env still parses.
+      const lower = raw.trim().toLowerCase();
       if (["true", "1", "yes", "on"].includes(lower)) return { value: true };
       if (["false", "0", "no", "off"].includes(lower)) return { value: false };
       return {
