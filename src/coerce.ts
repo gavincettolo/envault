@@ -33,17 +33,25 @@ function runCustomValidate(
   | { value: unknown; error?: never }
   | { value?: never; error: ValidationError } {
   if (!("validate" in field) || !field.validate) return { value };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const result = (field.validate as (v: unknown) => true | string)(value);
-  if (result === true) return { value };
   const isSecret = "secret" in field && field.secret === true;
-  return {
+  const fail = (message: string) => ({
     error: makeError(
       key,
-      `"${key}" ${result}`,
+      `"${key}" ${message}`,
       isSecret ? undefined : formatValue(value),
     ),
-  };
+  });
+  let result: true | string;
+  try {
+    result = (field.validate as (v: unknown) => true | string)(value);
+  } catch (err) {
+    // A throwing hook must not abort aggregation of the other fields.
+    return fail(
+      `validate threw: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (result === true) return { value };
+  return fail(result);
 }
 
 function isRequiredNow(field: FieldDef, environment: string | undefined): boolean {

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - String `pattern` regexes with the `g` or `y` flag no longer pass and fail on alternate `check()` calls
+- A `validate` hook that throws is reported as a validation error instead of aborting `check()` and hiding the other errors
 - Number fields reject whitespace-only values and `Infinity` (previously coerced to `0` / `Infinity`)
 - `generateExample()` serializes `json` defaults with `JSON.stringify` instead of printing `[object Object]`
 - `generateExample()` joins `array` defaults with the field's `delimiter`

@@ -1,6 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { check } from "../src/check.js";
+import type { ValidationError } from "../src/types.js";
 
 describe("check()", () => {
   test("returns string value", () => {
@@ -365,6 +366,59 @@ describe("check()", () => {
       /handled/,
     );
     assert.equal(value, '{"a":1}');
+  });
+
+  test("a throwing validate hook is reported alongside other errors", () => {
+    let errors: ValidationError[] = [];
+    assert.throws(
+      () =>
+        check(
+          {
+            A: {
+              type: "string",
+              validate: () => {
+                throw new Error("boom");
+              },
+            },
+            B: { type: "number", required: true },
+          },
+          {
+            env: { A: "x" },
+            onError: (e) => {
+              errors = e;
+              throw new Error("handled");
+            },
+          },
+        ),
+      /handled/,
+    );
+    assert.deepEqual(
+      errors.map((e) => e.key),
+      ["A", "B"],
+    );
+    assert.equal(errors[0]?.message, '"A" validate threw: boom');
+    assert.equal(errors[0]?.value, "x");
+  });
+
+  test("a throwing validate hook does not leak secret values", () => {
+    assert.throws(
+      () =>
+        check(
+          {
+            TOKEN: {
+              type: "string",
+              secret: true,
+              validate: () => {
+                throw "not an Error";
+              },
+            },
+          },
+          { env: { TOKEN: "hunter2" } },
+        ),
+      (e: Error) =>
+        e.message.includes('"TOKEN" validate threw: not an Error') &&
+        !e.message.includes("hunter2"),
+    );
   });
 
   test("coerces array with default delimiter", () => {
