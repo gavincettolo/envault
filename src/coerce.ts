@@ -13,6 +13,18 @@ function formatValue(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
+/**
+ * `RegExp.prototype.test` advances `lastIndex` on global and sticky regexes,
+ * so repeated calls would alternate between pass and fail. Test a stateless
+ * copy instead, leaving the caller's regex untouched.
+ */
+function matches(pattern: RegExp, value: string): boolean {
+  if (!pattern.global && !pattern.sticky) return pattern.test(value);
+  return new RegExp(pattern.source, pattern.flags.replace(/[gy]/g, "")).test(
+    value,
+  );
+}
+
 function runCustomValidate(
   key: string,
   value: unknown,
@@ -66,7 +78,7 @@ export function coerceAndValidate(
   // ── Per-type coercion & validation ──────────────────────────────────────────
   switch (field.type) {
     case "string": {
-      if (field.pattern && !field.pattern.test(raw)) {
+      if (field.pattern && !matches(field.pattern, raw)) {
         return {
           error: makeError(
             key,

@@ -270,6 +270,16 @@ describe("check()", () => {
     );
   });
 
+  test("pattern with global or sticky flag gives the same result on every call", () => {
+    for (const pattern of [/^a/g, /a/y]) {
+      const schema = { S: { type: "string", pattern } } as const;
+      for (let i = 0; i < 3; i++) {
+        assert.equal(check(schema, { env: { S: "abc" } }).S, "abc");
+      }
+      assert.equal(pattern.lastIndex, 0);
+    }
+  });
+
   test("does not leak secret value on pattern mismatch", () => {
     assert.throws(
       () =>
