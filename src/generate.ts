@@ -1,8 +1,15 @@
 import type { Schema, FieldDef } from "./types.js";
 
 function placeholderFor(key: string, field: FieldDef): string {
-  if ("default" in field && field.default !== undefined) {
-    return String(field.default);
+  if (field.default !== undefined) {
+    switch (field.type) {
+      case "json":
+        return JSON.stringify(field.default);
+      case "array":
+        return field.default.join(field.delimiter ?? ",");
+      default:
+        return String(field.default);
+    }
   }
   switch (field.type) {
     case "string":

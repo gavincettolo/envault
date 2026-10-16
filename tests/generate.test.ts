@@ -40,4 +40,20 @@ describe("generateExample()", () => {
     });
     assert.match(out, /^LEVEL=info$/m);
   });
+
+  test("serializes JSON defaults instead of [object Object]", () => {
+    const out = generateExample({
+      FLAGS: { type: "json", default: { beta: true } },
+    });
+    assert.match(out, /^FLAGS={"beta":true}$/m);
+  });
+
+  test("joins array defaults with the field delimiter", () => {
+    const out = generateExample({
+      TAGS: { type: "array", default: ["a", "b"], delimiter: "|" },
+      HOSTS: { type: "array", default: ["x", "y"] },
+    });
+    assert.match(out, /^TAGS=a\|b$/m);
+    assert.match(out, /^HOSTS=x,y$/m);
+  });
 });
