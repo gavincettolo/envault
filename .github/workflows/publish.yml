@@ -14,13 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify tag matches package.json version
+        run: |
+          PKG_VERSION="v$(node -p "require('./package.json').version")"
+          if [ "$PKG_VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      # pnpm version comes from the packageManager field in package.json.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           registry-url: "https://registry.npmjs.org"
 
@@ -28,8 +35,10 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run build
       - run: pnpm test
+      - run: pnpm run check:package
 
-      - run: npm install -g npm@latest
+      # Trusted publishing (OIDC) needs npm >= 11.5.1; pin the major for reproducibility.
+      - run: npm install -g npm@11
       - run: npm publish --access public --provenance
 
       - name: Create GitHub Release
