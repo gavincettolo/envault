@@ -1,107 +1,81 @@
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
 import { check } from "../src/check.js";
-import { generateExample } from "../src/generate.js";
 
-// ─── check() tests ────────────────────────────────────────────────────────────
-
-let failed = false;
-
-function test(name: string, fn: () => void) {
-  try {
-    fn();
-    console.log(`  ✓ ${name}`);
-  } catch (e) {
-    console.error(`  ✗ ${name}`);
-    console.error(`    ${(e as Error).message}`);
-    failed = true;
-  }
-}
-
-function assert(condition: boolean, message: string) {
-  if (!condition) throw new Error(message);
-}
-
-console.log("\ncheck()");
-
-test("returns string value", () => {
-  const env = check(
-    { FOO: { type: "string", required: true } },
-    { env: { FOO: "bar" } },
-  );
-  assert(env.FOO === "bar", `expected 'bar', got '${env.FOO}'`);
-});
-
-test("returns default when var is missing", () => {
-  const env = check({ PORT: { type: "number", default: 3000 } }, { env: {} });
-  assert(env.PORT === 3000, `expected 3000, got ${env.PORT}`);
-});
-
-test("coerces number", () => {
-  const env = check(
-    { PORT: { type: "number", required: true } },
-    { env: { PORT: "8080" } },
-  );
-  assert(env.PORT === 8080, `expected 8080, got ${env.PORT}`);
-});
-
-test("coerces boolean true variants", () => {
-  for (const v of ["true", "1", "yes", "on"]) {
+describe("check()", () => {
+  test("returns string value", () => {
     const env = check(
-      { FLAG: { type: "boolean", required: true } },
-      { env: { FLAG: v } },
+      { FOO: { type: "string", required: true } },
+      { env: { FOO: "bar" } },
     );
-    assert(env.FLAG === true, `expected true for "${v}"`);
-  }
-});
+    assert.equal(env.FOO, "bar");
+  });
 
-test("coerces boolean false variants", () => {
-  for (const v of ["false", "0", "no", "off"]) {
+  test("returns default when var is missing", () => {
+    const env = check({ PORT: { type: "number", default: 3000 } }, { env: {} });
+    assert.equal(env.PORT, 3000);
+  });
+
+  test("coerces number", () => {
     const env = check(
-      { FLAG: { type: "boolean", required: true } },
-      { env: { FLAG: v } },
+      { PORT: { type: "number", required: true } },
+      { env: { PORT: "8080" } },
     );
-    assert(env.FLAG === false, `expected false for "${v}"`);
-  }
-});
+    assert.equal(env.PORT, 8080);
+  });
 
-test("validates URL", () => {
-  const env = check(
-    { URL: { type: "url", required: true } },
-    { env: { URL: "https://example.com" } },
-  );
-  assert(env.URL === "https://example.com", "expected URL to pass through");
-});
+  test("coerces boolean true variants", () => {
+    for (const v of ["true", "1", "yes", "on", "TRUE"]) {
+      const env = check(
+        { FLAG: { type: "boolean", required: true } },
+        { env: { FLAG: v } },
+      );
+      assert.equal(env.FLAG, true, `expected true for "${v}"`);
+    }
+  });
 
-test("rejects invalid URL", () => {
-  let threw = false;
-  try {
-    check(
+  test("coerces boolean false variants", () => {
+    for (const v of ["false", "0", "no", "off", "Off"]) {
+      const env = check(
+        { FLAG: { type: "boolean", required: true } },
+        { env: { FLAG: v } },
+      );
+      assert.equal(env.FLAG, false, `expected false for "${v}"`);
+    }
+  });
+
+  test("rejects invalid boolean", () => {
+    assert.throws(
+      () =>
+        check(
+          { FLAG: { type: "boolean", required: true } },
+          { env: { FLAG: "maybe" } },
+        ),
+      /must be a boolean/,
+    );
+  });
+
+  test("validates URL", () => {
+    const env = check(
       { URL: { type: "url", required: true } },
-      { env: { URL: "not-a-url" } },
+      { env: { URL: "https://example.com" } },
     );
-  } catch {
-    threw = true;
-  }
-  assert(threw, "expected error for invalid URL");
-});
+    assert.equal(env.URL, "https://example.com");
+  });
 
-test("validates enum", () => {
-  const env = check(
-    {
-      NODE_ENV: {
-        type: "enum",
-        values: ["dev", "prod"] as const,
-        required: true,
-      },
-    },
-    { env: { NODE_ENV: "prod" } },
-  );
-  assert(env.NODE_ENV === "prod", `expected 'prod', got '${env.NODE_ENV}'`);
-});
+  test("rejects invalid URL", () => {
+    assert.throws(
+      () =>
+        check(
+          { URL: { type: "url", required: true } },
+          { env: { URL: "not-a-url" } },
+        ),
+      /must be a valid URL/,
+    );
+  });
 
-test("rejects invalid enum value", () => {
-  let threw = false;
-  try {
-    check(
+  test("validates enum", () => {
+    const env = check(
       {
         NODE_ENV: {
           type: "enum",
@@ -109,129 +83,204 @@ test("rejects invalid enum value", () => {
           required: true,
         },
       },
-      { env: { NODE_ENV: "staging" } },
+      { env: { NODE_ENV: "prod" } },
     );
-  } catch {
-    threw = true;
-  }
-  assert(threw, "expected error for invalid enum value");
-});
+    assert.equal(env.NODE_ENV, "prod");
+  });
 
-test("parses JSON", () => {
-  const env = check(
-    { CONFIG: { type: "json", required: true } },
-    { env: { CONFIG: '{"x":1}' } },
-  );
-  assert((env.CONFIG as { x: number }).x === 1, "expected parsed JSON object");
-});
-
-test("throws with all errors at once", () => {
-  let message = "";
-  try {
-    check(
-      {
-        A: { type: "string", required: true },
-        B: { type: "number", required: true },
-      },
-      { env: {} },
+  test("rejects invalid enum value", () => {
+    assert.throws(
+      () =>
+        check(
+          {
+            NODE_ENV: {
+              type: "enum",
+              values: ["dev", "prod"] as const,
+              required: true,
+            },
+          },
+          { env: { NODE_ENV: "staging" } },
+        ),
+      /must be one of \[dev, prod\]/,
     );
-  } catch (e) {
-    message = (e as Error).message;
-  }
-  assert(message.includes('"A"'), "expected error for A");
-  assert(message.includes('"B"'), "expected error for B");
-});
+  });
 
-test("calls custom onError handler", () => {
-  let called = false;
-  try {
-    check(
-      { X: { type: "string", required: true } },
-      {
-        env: {},
-        onError: (errors) => {
-          called = true;
-          assert(errors[0]?.key === "X", "expected error key X");
-          throw new Error("handled");
-        },
-      },
+  test("parses JSON", () => {
+    const env = check(
+      { CONFIG: { type: "json", required: true } },
+      { env: { CONFIG: '{"x":1}' } },
     );
-  } catch (e) {
-    assert(
-      (e as Error).message === "handled",
-      'expected onError to throw "handled"',
-    );
-  }
-  assert(called, "onError was not called");
-});
+    assert.deepEqual(env.CONFIG, { x: 1 });
+  });
 
-test("masks secret values in errors", () => {
-  let message = "";
-  try {
-    check(
-      { API_KEY: { type: "url", required: true, secret: true } },
-      { env: { API_KEY: "not-a-url" } },
+  test("rejects invalid JSON", () => {
+    assert.throws(
+      () =>
+        check(
+          { CONFIG: { type: "json", required: true } },
+          { env: { CONFIG: "{nope" } },
+        ),
+      /must be valid JSON/,
     );
-  } catch (e) {
-    message = (e as Error).message;
-  }
-  assert(
-    !message.includes("not-a-url"),
-    "secret value should be masked in error",
-  );
-});
+  });
 
-test("validates number min/max", () => {
-  let threw = false;
-  try {
-    check(
-      { N: { type: "number", required: true, min: 1, max: 10 } },
-      { env: { N: "99" } },
+  test("treats empty string as missing", () => {
+    const env = check(
+      { HOST: { type: "string", default: "localhost" } },
+      { env: { HOST: "" } },
     );
-  } catch {
-    threw = true;
-  }
-  assert(threw, "expected error for out-of-range number");
-});
+    assert.equal(env.HOST, "localhost");
+  });
 
-test("validates string pattern", () => {
-  let threw = false;
-  try {
-    check(
-      { SLUG: { type: "string", required: true, pattern: /^[a-z]+$/ } },
-      { env: { SLUG: "UPPER" } },
+  test("optional missing field is undefined", () => {
+    const env = check({ X: { type: "string" } }, { env: {} });
+    assert.equal(env.X, undefined);
+  });
+
+  test("throws with all errors at once", () => {
+    assert.throws(
+      () =>
+        check(
+          {
+            A: { type: "string", required: true },
+            B: { type: "number", required: true },
+          },
+          { env: {} },
+        ),
+      (e: Error) =>
+        e.message.includes("2 environment variables") &&
+        e.message.includes('"A"') &&
+        e.message.includes('"B"'),
     );
-  } catch {
-    threw = true;
-  }
-  assert(threw, "expected error for pattern mismatch");
-});
+  });
 
-test("requiredIn throws when environment matches", () => {
-  let threw = false;
-  try {
-    check(
+  test("calls custom onError handler", () => {
+    let received: string | undefined;
+    assert.throws(
+      () =>
+        check(
+          { X: { type: "string", required: true } },
+          {
+            env: {},
+            onError: (errors) => {
+              received = errors[0]?.key;
+              throw new Error("handled");
+            },
+          },
+        ),
+      /handled/,
+    );
+    assert.equal(received, "X");
+  });
+
+  test("masks secret values in errors", () => {
+    assert.throws(
+      () =>
+        check(
+          { API_KEY: { type: "url", required: true, secret: true } },
+          { env: { API_KEY: "not-a-url" } },
+        ),
+      (e: Error) => !e.message.includes("not-a-url"),
+    );
+  });
+
+  test("validates number min/max", () => {
+    assert.throws(
+      () =>
+        check(
+          { N: { type: "number", required: true, min: 1, max: 10 } },
+          { env: { N: "99" } },
+        ),
+      /must be ≤ 10/,
+    );
+    assert.throws(
+      () =>
+        check(
+          { N: { type: "number", required: true, min: 1, max: 10 } },
+          { env: { N: "0" } },
+        ),
+      /must be ≥ 1/,
+    );
+  });
+
+  test("masks secret values in number range errors", () => {
+    assert.throws(
+      () =>
+        check(
+          { N: { type: "number", required: true, max: 10, secret: true } },
+          { env: { N: "12345" } },
+        ),
+      (e: Error) => !e.message.includes("12345"),
+    );
+  });
+
+  test("validates string pattern", () => {
+    assert.throws(
+      () =>
+        check(
+          { SLUG: { type: "string", required: true, pattern: /^[a-z]+$/ } },
+          { env: { SLUG: "UPPER" } },
+        ),
+      /does not match pattern/,
+    );
+  });
+
+  test("does not leak secret value on pattern mismatch", () => {
+    assert.throws(
+      () =>
+        check(
+          {
+            TOKEN: {
+              type: "string",
+              required: true,
+              secret: true,
+              pattern: /^sk_/,
+            },
+          },
+          { env: { TOKEN: "hunter2" } },
+        ),
+      (e: Error) => !e.message.includes("hunter2"),
+    );
+  });
+
+  test("requiredIn throws when environment matches", () => {
+    assert.throws(
+      () =>
+        check(
+          { DATABASE_URL: { type: "string", requiredIn: ["production"] } },
+          { env: {}, environment: "production" },
+        ),
+      /Missing required variable "DATABASE_URL"/,
+    );
+  });
+
+  test("requiredIn does not throw when environment doesn't match", () => {
+    const env = check(
       { DATABASE_URL: { type: "string", requiredIn: ["production"] } },
-      { env: {}, environment: "production" },
+      { env: {}, environment: "development" },
     );
-  } catch {
-    threw = true;
-  }
-  assert(threw, "expected error when environment matches requiredIn");
-});
+    assert.equal(env.DATABASE_URL, undefined);
+  });
 
-test("requiredIn does not throw when environment doesn't match", () => {
-  const env = check(
-    { DATABASE_URL: { type: "string", requiredIn: ["production"] } },
-    { env: {}, environment: "development" },
-  );
-  assert(env.DATABASE_URL === undefined, "expected undefined outside requiredIn");
-});
+  test("custom validate hook rejects value", () => {
+    assert.throws(
+      () =>
+        check(
+          {
+            PORT: {
+              type: "number",
+              required: true,
+              validate: (n) => (n % 2 === 0 ? true : "must be even"),
+            },
+          },
+          { env: { PORT: "3001" } },
+        ),
+      /"PORT" must be even/,
+    );
+  });
 
-test("custom validate hook rejects value", () => {
-  let message = "";
-  try {
-    check(
+  test("custom validate hook accepts value", () => {
+    const env = check(
       {
         PORT: {
           type: "number",
@@ -239,80 +288,24 @@ test("custom validate hook rejects value", () => {
           validate: (n) => (n % 2 === 0 ? true : "must be even"),
         },
       },
-      { env: { PORT: "3001" } },
+      { env: { PORT: "3002" } },
     );
-  } catch (e) {
-    message = (e as Error).message;
-  }
-  assert(message.includes("must be even"), "expected custom validate error");
-});
-
-test("custom validate hook accepts value", () => {
-  const env = check(
-    {
-      PORT: {
-        type: "number",
-        required: true,
-        validate: (n) => (n % 2 === 0 ? true : "must be even"),
-      },
-    },
-    { env: { PORT: "3002" } },
-  );
-  assert(env.PORT === 3002, "expected value to pass through validate");
-});
-
-test("coerces array with default delimiter", () => {
-  const env = check(
-    { ORIGINS: { type: "array", required: true } },
-    { env: { ORIGINS: "a.com, b.com,c.com" } },
-  );
-  assert(
-    JSON.stringify(env.ORIGINS) === JSON.stringify(["a.com", "b.com", "c.com"]),
-    `expected trimmed array, got ${JSON.stringify(env.ORIGINS)}`,
-  );
-});
-
-test("coerces array with custom delimiter", () => {
-  const env = check(
-    { ORIGINS: { type: "array", required: true, delimiter: "|" } },
-    { env: { ORIGINS: "a.com|b.com" } },
-  );
-  assert(
-    JSON.stringify(env.ORIGINS) === JSON.stringify(["a.com", "b.com"]),
-    `expected pipe-delimited array, got ${JSON.stringify(env.ORIGINS)}`,
-  );
-});
-
-// ─── generateExample() tests ──────────────────────────────────────────────────
-
-console.log("\ngenerateExample()");
-
-test("includes all keys", () => {
-  const out = generateExample({
-    DATABASE_URL: { type: "url", required: true },
-    PORT: { type: "number", default: 3000 },
+    assert.equal(env.PORT, 3002);
   });
-  assert(out.includes("DATABASE_URL="), "expected DATABASE_URL");
-  assert(out.includes("PORT=3000"), "expected PORT with default");
-});
 
-test("leaves secret values blank", () => {
-  const out = generateExample({
-    API_KEY: { type: "string", required: true, secret: true },
+  test("coerces array with default delimiter", () => {
+    const env = check(
+      { ORIGINS: { type: "array", required: true } },
+      { env: { ORIGINS: "a.com, b.com,c.com" } },
+    );
+    assert.deepEqual(env.ORIGINS, ["a.com", "b.com", "c.com"]);
   });
-  assert(
-    out.includes("API_KEY=\n") || out.includes("API_KEY="),
-    "expected blank secret value",
-  );
-  assert(!out.includes("your_api_key"), "secret placeholder should be empty");
-});
 
-test("includes description as comment", () => {
-  const out = generateExample({
-    PORT: { type: "number", default: 3000, description: "HTTP server port" },
+  test("coerces array with custom delimiter", () => {
+    const env = check(
+      { ORIGINS: { type: "array", required: true, delimiter: "|" } },
+      { env: { ORIGINS: "a.com|b.com" } },
+    );
+    assert.deepEqual(env.ORIGINS, ["a.com", "b.com"]);
   });
-  assert(out.includes("# HTTP server port"), "expected description comment");
 });
-
-console.log();
-if (failed) throw new Error("Some tests failed");

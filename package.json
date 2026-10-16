@@ -40,7 +40,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "test": "tsx tests/check.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run build && npm test"
   },
