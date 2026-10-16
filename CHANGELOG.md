@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `check()` uses a `const` type parameter: enum `values` infer a literal union without `as const`
+
 ### Fixed
 - Number fields reject whitespace-only values and `Infinity` (previously coerced to `0` / `Infinity`)
 - `generateExample()` serializes `json` defaults with `JSON.stringify` instead of printing `[object Object]`

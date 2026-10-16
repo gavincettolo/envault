@@ -7,7 +7,7 @@ import type {
 } from "./types.js";
 import { coerceAndValidate } from "./coerce.js";
 
-export function check<S extends Schema>(
+export function check<const S extends Schema>(
   schema: S,
   options: CheckOptions = {},
 ): Env<S> {

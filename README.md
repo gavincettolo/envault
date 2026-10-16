@@ -10,7 +10,7 @@ import { check } from '@gavincettolo/envault'
 const env = check({
   DATABASE_URL: { type: 'url',     required: true },
   PORT:         { type: 'number',  default: 3000  },
-  NODE_ENV:     { type: 'enum',    values: ['development', 'production', 'test'] as const },
+  NODE_ENV:     { type: 'enum',    values: ['development', 'production', 'test'] },
   API_KEY:      { type: 'string',  required: true, secret: true },
 })
 
@@ -87,19 +87,21 @@ If a required variable is missing, `check()` throws before your app does any wor
 
 ### Enum — narrow the type
 
-Pass `as const` on the values array to get a union type in the output:
+The values are inferred as a literal union, so no `as const` is needed:
 
 ```ts
 const env = check({
   LOG_LEVEL: {
     type: 'enum',
-    values: ['debug', 'info', 'warn', 'error'] as const,
+    values: ['debug', 'info', 'warn', 'error'],
     default: 'info',
   },
 })
 
 // env.LOG_LEVEL → 'debug' | 'info' | 'warn' | 'error'
 ```
+
+This works when the schema is written inline in `check()`. If you declare the schema in a separate variable, add `as const` to the variable so the literal types survive.
 
 ### JSON
 
@@ -261,7 +263,7 @@ Additional options per type:
 | `number`  | `secret`, `min: number`, `max: number`              | `number` (finite)              |
 | `boolean` | —                                                   | `boolean`                      |
 | `url`     | `secret`                                            | `string`                       |
-| `enum`    | `values: readonly string[]` — use `as const`        | union of the provided values   |
+| `enum`    | `values: readonly string[]`                         | union of the provided values   |
 | `json`    | `secret`                                            | `unknown`                      |
 | `array`   | `secret`, `delimiter: string` (default `,`)         | `string[]`                     |
 

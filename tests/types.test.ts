@@ -22,6 +22,9 @@ function sample() {
     LIST: { type: "array", default: [] },
     CONF: { type: "json" },
     PROD_ONLY: { type: "string", requiredIn: ["production"] },
+    // No `as const`: the const type parameter keeps the literal union.
+    MODE: { type: "enum", values: ["a", "b"], required: true },
+    TAGS: { type: "array", default: ["x"], delimiter: "|" },
   });
 }
 
@@ -37,6 +40,8 @@ export type Assertions = [
   Expect<Equal<E["LIST"], string[]>>,
   Expect<Equal<E["CONF"], unknown>>,
   Expect<Equal<E["PROD_ONLY"], string | undefined>>,
+  Expect<Equal<E["MODE"], "a" | "b">>,
+  Expect<Equal<E["TAGS"], string[]>>,
 ];
 
 test("type assertions compile", () => {});
