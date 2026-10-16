@@ -29,6 +29,30 @@ function placeholderFor(key: string, field: FieldDef): string {
   }
 }
 
+/**
+ * Quotes a value so dotenv reads it back unchanged. Unquoted, dotenv drops
+ * everything from `#` (inline comment), trims surrounding whitespace, strips
+ * one surrounding pair of quotes, and stops at a line break.
+ */
+function quoteValue(value: string): string {
+  if (!/[#\r\n]|^\s|\s$|^['"`]/.test(value)) return value;
+
+  // Double quotes are the only style where dotenv expands \n and \r, so they
+  // can carry line breaks on one line. They would also turn a literal
+  // backslash-n already in the value into a line break, so avoid that case.
+  const doubleOk = !value.includes('"') && !/\\[nr]/.test(value);
+  const doubleQuoted = `"${value.replace(/\r/g, "\\r").replace(/\n/g, "\\n")}"`;
+  const hasLineBreak = /[\r\n]/.test(value);
+
+  if (hasLineBreak && doubleOk) return doubleQuoted;
+  // Single quotes and backticks are literal, so prefer them otherwise.
+  if (!value.includes("'")) return `'${value}'`;
+  if (doubleOk) return doubleQuoted;
+  if (!value.includes("`")) return `\`${value}\``;
+  // The value contains every quote character: dotenv has no escape for that.
+  return doubleQuoted;
+}
+
 function commentFor(field: FieldDef): string[] {
   const lines: string[] = [];
   if ("description" in field && field.description) {
@@ -64,7 +88,7 @@ export function generateExample(schema: Schema): string {
     const comments = commentFor(field);
     const placeholder = placeholderFor(key, field);
     const isSecret = "secret" in field && field.secret;
-    const value = isSecret ? "" : placeholder;
+    const value = isSecret ? "" : quoteValue(placeholder);
 
     sections.push([...comments, `${key}=${value}`].join("\n"));
   }

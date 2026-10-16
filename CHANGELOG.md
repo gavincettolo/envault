@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Boolean fields ignore surrounding whitespace (`" true "` previously failed while numbers were trimmed)
 - A `validate` hook that throws is reported as a validation error instead of aborting `check()` and hiding the other errors
 - Number fields reject whitespace-only values and `Infinity` (previously coerced to `0` / `Infinity`)
+- `generateExample()` quotes values containing `#`, line breaks, surrounding whitespace or a leading quote, so dotenv reads them back unchanged instead of truncating them
 - `generateExample()` serializes `json` defaults with `JSON.stringify` instead of printing `[object Object]`
 - `generateExample()` joins `array` defaults with the field's `delimiter`
 - `generateExample()` comments every line of a multi-line `description`

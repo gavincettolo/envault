@@ -241,6 +241,8 @@ PORT=3000
 API_KEY=
 ```
 
+Values containing `#`, line breaks, surrounding whitespace or a leading quote are quoted so dotenv reads them back unchanged.
+
 ---
 
 ## Field reference

@@ -57,6 +57,45 @@ describe("generateExample()", () => {
     assert.match(out, /^HOSTS=x,y$/m);
   });
 
+  test("leaves values that need no quoting unquoted", () => {
+    const out = generateExample({
+      A: { type: "string", default: "plain-value" },
+      B: { type: "string", default: `it's "fine"` },
+      C: { type: "string", default: "x=y" },
+    });
+    assert.match(out, /^A=plain-value$/m);
+    assert.match(out, /^B=it's "fine"$/m);
+    assert.match(out, /^C=x=y$/m);
+  });
+
+  test("quotes values that dotenv would otherwise misread", () => {
+    // Each expected line parses back to the original value with dotenv.
+    const cases: [string, string][] = [
+      ["pa#ss word", `'pa#ss word'`],
+      ["  padded  ", `'  padded  '`],
+      ["'quoted'", `"'quoted'"`],
+      ['"dq"', `'"dq"'`],
+      ["a\nb", `"a\\nb"`],
+      ["a\r\nb", `"a\\r\\nb"`],
+      ["it's #1", `"it's #1"`],
+      ["C:\\new #1", `'C:\\new #1'`],
+      [`it's "#"`, "`it's \"#\"`"],
+    ];
+    for (const [value, expected] of cases) {
+      const out = generateExample({ V: { type: "string", default: value } });
+      assert.equal(out, `# type: string\nV=${expected}\n`, JSON.stringify(value));
+    }
+  });
+
+  test("quotes JSON and array defaults that contain #", () => {
+    const out = generateExample({
+      J: { type: "json", default: { msg: "hello # world" } },
+      L: { type: "array", default: ["#a", "b"] },
+    });
+    assert.match(out, /^J='{"msg":"hello # world"}'$/m);
+    assert.match(out, /^L='#a,b'$/m);
+  });
+
   test("comments every line of a multi-line description", () => {
     const out = generateExample({
       PORT: { type: "number", default: 3000, description: "HTTP port\nUsed by the API" },
