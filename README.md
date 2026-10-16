@@ -5,7 +5,7 @@
 `process.env.DATABASE_URL` is silently `undefined` at runtime, and nobody finds out until the app crashes in production. `envault` validates, coerces, and types your environment variables at startup — and reports every problem at once.
 
 ```ts
-import { check } from 'envault'
+import { check } from '@gavincettolo/envault'
 
 const env = check({
   DATABASE_URL: { type: 'url',     required: true },
@@ -49,11 +49,11 @@ You can wire those together yourself — but that's 2 dependencies, ~20 lines of
 ## Installation
 
 ```bash
-npm install envault
+npm install @gavincettolo/envault
 # or
-pnpm add envault
+pnpm add @gavincettolo/envault
 # or
-yarn add envault
+yarn add @gavincettolo/envault
 ```
 
 ---
@@ -63,7 +63,7 @@ yarn add envault
 ### Basic
 
 ```ts
-import { check } from 'envault'
+import { check } from '@gavincettolo/envault'
 
 const env = check({
   HOST:    { type: 'string', default: 'localhost' },
@@ -207,7 +207,7 @@ const env = check(schema, {
 Keep your `.env.example` in sync automatically. Add this to a script or CI step:
 
 ```ts
-import { generateExample } from 'envault'
+import { generateExample } from '@gavincettolo/envault'
 import { writeFileSync } from 'node:fs'
 import { schema } from './src/env.js'
 
