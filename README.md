@@ -284,7 +284,7 @@ Validates `process.env` (or `options.env`) against the schema and returns a full
 Throws with an aggregated error message if any variables fail. Pass `options.onError` to handle errors yourself.
 
 ```ts
-function check<S extends Schema>(schema: S, options?: CheckOptions): Env<S>
+function check<const S extends Schema>(schema: S, options?: CheckOptions): Env<S>
 ```
 
 ### `generateExample(schema)`

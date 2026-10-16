@@ -22,11 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `check()` still throws the aggregated error if a custom `onError` returns instead of throwing
 - `check()` only reads own properties of `options.env`, ignoring inherited ones such as `toString`
 - CommonJS consumers now resolve `index.d.cts` instead of the ESM declaration file
+- README `check()` signature shows the `const` type parameter
 - README install/import examples use the published name `@gavincettolo/envault`
 
 ### Changed
 - Default values are validated like provided values (`values`, `min`/`max`, `pattern`, URL syntax, `validate`); an invalid default now makes `check()` fail with a `(default value)` error instead of being returned silently
 - Tests run on the built-in `node:test` runner and are type-checked by `pnpm run lint`
+- `engines.node` is now `>=20`: Node 18 is end-of-life and was no longer tested in CI
 - CI runs on Node 20, 22 and 24 and checks the packed tarball with attw and publint
 - Publish workflow verifies that the tag matches `package.json` and pins npm to major 11
 
