@@ -9,6 +9,10 @@ function makeError(
   return { key, message };
 }
 
+function formatValue(value: unknown): string {
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
 function runCustomValidate(
   key: string,
   value: unknown,
@@ -25,7 +29,7 @@ function runCustomValidate(
     error: makeError(
       key,
       `"${key}" ${result}`,
-      isSecret ? undefined : String(value),
+      isSecret ? undefined : formatValue(value),
     ),
   };
 }

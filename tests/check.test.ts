@@ -307,6 +307,25 @@ describe("check()", () => {
     assert.equal(env.PORT, 3002);
   });
 
+  test("custom validate error reports JSON values readably", () => {
+    let value: string | undefined;
+    assert.throws(
+      () =>
+        check(
+          { CONF: { type: "json", required: true, validate: () => "bad" } },
+          {
+            env: { CONF: '{"a":1}' },
+            onError: (errors) => {
+              value = errors[0]?.value;
+              throw new Error("handled");
+            },
+          },
+        ),
+      /handled/,
+    );
+    assert.equal(value, '{"a":1}');
+  });
+
   test("coerces array with default delimiter", () => {
     const env = check(
       { ORIGINS: { type: "array", required: true } },
