@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Number fields reject whitespace-only values and `Infinity` (previously coerced to `0` / `Infinity`)
+- `generateExample()` serializes `json` defaults with `JSON.stringify` instead of printing `[object Object]`
+- `generateExample()` joins `array` defaults with the field's `delimiter`
+- `generateExample()` comments every line of a multi-line `description`
+- `ValidationError.value` from a failing `validate` hook is JSON-serialized for non-string values
+- `check()` still throws the aggregated error if a custom `onError` returns instead of throwing
+- `check()` only reads own properties of `options.env`, ignoring inherited ones such as `toString`
+- CommonJS consumers now resolve `index.d.cts` instead of the ESM declaration file
+- README install/import examples use the published name `@gavincettolo/envault`
+
+### Changed
+- Tests run on the built-in `node:test` runner and are type-checked by `pnpm run lint`
+- CI runs on Node 20, 22 and 24 and checks the packed tarball with attw and publint
+- Publish workflow verifies that the tag matches `package.json` and pins npm to major 11
+
 ## [0.2.0] - 2026-07-01
 
 ### Added
@@ -34,3 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full TypeScript inference — return type is inferred from the schema shape
 - Zero runtime dependencies
 - ESM + CJS dual build
+
+[Unreleased]: https://github.com/gavincettolo/envault/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/gavincettolo/envault/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/gavincettolo/envault/releases/tag/v0.1.0
