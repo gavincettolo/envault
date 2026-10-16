@@ -245,25 +245,27 @@ API_KEY=
 
 Every field shares these base options:
 
-| Option        | Type      | Description                                              |
-|---------------|-----------|----------------------------------------------------------|
-| `required`    | `boolean` | Throws if the variable is missing and has no default     |
-| `default`     | —         | Fallback value (type must match the field type)          |
-| `description` | `string`  | Appears as a comment in generated `.env.example`         |
+| Option        | Type                         | Description                                                        |
+|---------------|------------------------------|--------------------------------------------------------------------|
+| `required`    | `boolean`                    | Fails if the variable is missing and has no default                |
+| `requiredIn`  | `readonly string[]`          | Required only when `options.environment` is one of these values    |
+| `default`     | field type                   | Fallback value when the variable is missing                        |
+| `description` | `string`                     | Appears as a comment in generated `.env.example`                   |
+| `validate`    | `(value) => true \| string`  | Custom check on the coerced value; return a string to fail        |
 
 Additional options per type:
 
 | Type      | Extra options                                       | Output type                    |
 |-----------|-----------------------------------------------------|--------------------------------|
 | `string`  | `secret`, `pattern: RegExp`                         | `string`                       |
-| `number`  | `min: number`, `max: number`                        | `number`                       |
+| `number`  | `secret`, `min: number`, `max: number`              | `number` (finite)              |
 | `boolean` | —                                                   | `boolean`                      |
 | `url`     | `secret`                                            | `string`                       |
 | `enum`    | `values: readonly string[]` — use `as const`        | union of the provided values   |
-| `json`    | —                                                   | `unknown`                      |
+| `json`    | `secret`                                            | `unknown`                      |
 | `array`   | `secret`, `delimiter: string` (default `,`)         | `string[]`                     |
 
-Every field also accepts `requiredIn: string[]` (require only in matching `options.environment`) and `validate: (value) => true | string` (custom validation).
+**Empty values** are treated as missing: `PORT=` falls back to the default, or fails if the field is required.
 
 **Boolean coercion** accepts: `true / false`, `1 / 0`, `yes / no`, `on / off` (case-insensitive).
 
