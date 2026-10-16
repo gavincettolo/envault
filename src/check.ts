@@ -32,7 +32,14 @@ export function check<const S extends Schema>(
     if ("error" in outcome) {
       errors.push(outcome.error);
     } else {
-      result[key] = outcome.value;
+      // defineProperty, not assignment: a "__proto__" key would otherwise
+      // replace the result's prototype instead of becoming a property.
+      Object.defineProperty(result, key, {
+        value: outcome.value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
   }
 
@@ -46,5 +53,6 @@ export function check<const S extends Schema>(
     );
   }
 
-  return result as Env<S>;
+  // Env<S> is readonly; freeze so the runtime matches the type.
+  return Object.freeze(result) as Env<S>;
 }

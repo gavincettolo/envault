@@ -1,5 +1,13 @@
 import type { FieldDef, ValidationError } from "./types.js";
 
+const DECIMAL = /^\s*[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?\s*$/;
+
+/**
+ * "localhost:3000" or "db.internal:5432" parse as URLs whose scheme is the
+ * host name. Catch that common mistake of leaving out the scheme.
+ */
+const HOST_PORT_WITHOUT_SCHEME = /^(?:localhost|[^:/?#]*\.[^:/?#]*):\d+(?:[/?#]|$)/i;
+
 type Outcome =
   | { value: unknown; error?: never }
   | { value?: never; error: ValidationError };
@@ -56,6 +64,10 @@ function runCustomValidate(
     );
   }
   if (result === true) return { value };
+  // A JS hook may return false or undefined; never print those as a message.
+  if (typeof result !== "string" || result === "") {
+    return fail("failed custom validation");
+  }
   return fail(result);
 }
 
@@ -90,8 +102,10 @@ function coerce(key: string, raw: string, field: FieldDef): Outcome {
     }
 
     case "number":
-      // Number("  ") is 0: treat whitespace-only as NaN so it is rejected.
-      return { value: raw.trim() === "" ? NaN : Number(raw) };
+      // Number() also accepts "", "0x1F", "0b11", "0o7" and "Infinity".
+      // Only plain decimal notation (optionally with an exponent) is a number
+      // here; anything else becomes NaN and is rejected by checkConstraints.
+      return { value: DECIMAL.test(raw) ? Number(raw) : NaN };
 
     case "boolean": {
       // Trim like number does, so "true " from a hand-edited .env still parses.
@@ -188,6 +202,9 @@ function checkConstraints(
 
     case "url": {
       try {
+        if (HOST_PORT_WITHOUT_SCHEME.test(value as string)) {
+          throw new TypeError("missing scheme");
+        }
         new (globalThis as unknown as { URL: new (s: string) => unknown }).URL(
           value as string,
         );
@@ -220,34 +237,46 @@ function checkConstraints(
   return runCustomValidate(key, value, field);
 }
 
+/** Missing value: fall back to the default, validated like any value. */
+function resolveMissing(
+  key: string,
+  field: FieldDef,
+  environment: string | undefined,
+): Outcome {
+  if ("default" in field && field.default !== undefined) {
+    const outcome = checkConstraints(
+      key,
+      field.default,
+      field,
+      formatValue(field.default),
+    );
+    if (outcome.error) {
+      outcome.error.message += " (default value)";
+    }
+    return outcome;
+  }
+  if (isRequiredNow(field, environment)) {
+    return { error: makeError(key, `Missing required variable "${key}"`) };
+  }
+  return { value: undefined };
+}
+
 export function coerceAndValidate(
   key: string,
   raw: string | undefined,
   field: FieldDef,
   environment?: string,
 ): Outcome {
-  // ── Missing value: fall back to the default, validated like any value ──────
   if (raw === undefined || raw === "") {
-    if ("default" in field && field.default !== undefined) {
-      const outcome = checkConstraints(
-        key,
-        field.default,
-        field,
-        formatValue(field.default),
-      );
-      if (outcome.error) {
-        outcome.error.message += " (default value)";
-      }
-      return outcome;
-    }
-    if (isRequiredNow(field, environment)) {
-      return { error: makeError(key, `Missing required variable "${key}"`) };
-    }
-    return { value: undefined };
+    return resolveMissing(key, field, environment);
   }
 
   // ── Provided value: coerce, then validate ──────────────────────────────────
   const coerced = coerce(key, raw, field);
   if (coerced.error) return coerced;
+  // "," or " , " yields no items: treat it like an empty value.
+  if (field.type === "array" && (coerced.value as string[]).length === 0) {
+    return resolveMissing(key, field, environment);
+  }
   return checkConstraints(key, coerced.value, field, raw);
 }

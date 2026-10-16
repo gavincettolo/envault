@@ -548,4 +548,90 @@ describe("check()", () => {
       assert.deepEqual(env, { E: "b", N: 5, S: "ok", J: { a: 1 } });
     });
   });
+
+  test("a __proto__ key becomes a property, not the prototype", () => {
+    const schema = JSON.parse('{"__proto__":{"type":"json"}}') as Schema;
+    const env = check(schema, {
+      env: JSON.parse('{"__proto__":"{\\"polluted\\":1}"}') as Record<string, string>,
+    }) as Record<string, unknown>;
+    assert.deepEqual(Object.keys(env), ["__proto__"]);
+    assert.deepEqual(env["__proto__"], { polluted: 1 });
+    assert.equal(Object.getPrototypeOf(env), Object.prototype);
+    assert.equal("polluted" in env, false);
+  });
+
+  test("returns a frozen object", () => {
+    const env = check({ A: { type: "string", default: "x" } }, { env: {} });
+    assert.ok(Object.isFrozen(env));
+    assert.throws(() => {
+      (env as { A: string }).A = "y";
+    }, TypeError);
+  });
+
+  test("accepts only decimal numbers", () => {
+    for (const [v, n] of [
+      ["42", 42],
+      ["-1.5", -1.5],
+      ["+7", 7],
+      [".5", 0.5],
+      ["5.", 5],
+      ["1e3", 1000],
+      [" 8 ", 8],
+    ] as const) {
+      assert.equal(check({ N: { type: "number" } }, { env: { N: v } }).N, n, v);
+    }
+    for (const v of ["0x1F", "0b11", "0o7", "1_000", "Infinity", "1e", "."]) {
+      assert.throws(
+        () => check({ N: { type: "number" } }, { env: { N: v } }),
+        /must be a finite number/,
+        v,
+      );
+    }
+  });
+
+  test("rejects host:port values that are missing a URL scheme", () => {
+    for (const v of ["localhost:3000", "db.internal:5432/app", "127.0.0.1:80"]) {
+      assert.throws(
+        () => check({ U: { type: "url" } }, { env: { U: v } }),
+        /must be a valid URL/,
+        v,
+      );
+    }
+    for (const v of [
+      "http://localhost:3000",
+      "postgres://db.internal:5432/app",
+      "mailto:a@example.com",
+      "tel:5551234",
+    ]) {
+      assert.equal(check({ U: { type: "url" } }, { env: { U: v } }).U, v);
+    }
+  });
+
+  test("validate returning a non-string failure gets a generic message", () => {
+    for (const bad of [false, undefined, ""]) {
+      const hook = (() => bad) as unknown as (v: string) => true | string;
+      assert.throws(
+        () => check({ A: { type: "string", validate: hook } }, { env: { A: "x" } }),
+        (e: Error) => e.message.includes('"A" failed custom validation'),
+        String(bad),
+      );
+    }
+  });
+
+  test("an array value with no items is treated as missing", () => {
+    assert.throws(
+      () =>
+        check({ L: { type: "array", required: true } }, { env: { L: " , ," } }),
+      /Missing required variable "L"/,
+    );
+    const env = check(
+      {
+        D: { type: "array", default: ["x"] },
+        O: { type: "array" },
+      },
+      { env: { D: ",", O: " , " } },
+    );
+    assert.deepEqual(env.D, ["x"]);
+    assert.equal(env.O, undefined);
+  });
 });

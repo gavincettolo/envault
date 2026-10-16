@@ -25,8 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CommonJS consumers now resolve `index.d.cts` instead of the ESM declaration file
 - README `check()` signature shows the `const` type parameter
 - README install/import examples use the published name `@gavincettolo/envault`
+- `check()` stores a `__proto__` schema key as a property instead of replacing the result's prototype
+- A `validate` hook returning something other than `true` or a message (e.g. `false`) fails with "failed custom validation" instead of printing `false`
+- README comparison table corrected against the current releases of zod, dotenv and envalid
 
 ### Changed
+- `check()` returns a frozen object, so the runtime matches the readonly `Env<S>` type
+- Number fields accept only decimal notation (with optional exponent); hex, binary and octal literals are rejected
+- URL fields reject `host:port` values without a scheme, such as `localhost:3000`
+- An array value with no items after splitting (e.g. `,`) is treated as missing: it uses the default or fails if required
 - Default values are validated like provided values (`values`, `min`/`max`, `pattern`, URL syntax, `validate`); an invalid default now makes `check()` fail with a `(default value)` error instead of being returned silently
 - Tests run on the built-in `node:test` runner and are type-checked by `pnpm run lint`
 - `engines.node` is now `>=20`: Node 18 is end-of-life and was no longer tested in CI

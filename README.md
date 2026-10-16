@@ -36,13 +36,17 @@ envault: 2 environment variables failed validation:
 You can wire those together yourself — but that's 2 dependencies, ~20 lines of glue code, and a schema you have to keep in sync with your `.env.example`. `envault` does all three in one call with zero dependencies.
 
 |                          | envault | dotenv + zod | envalid |
-|--------------------------|:---------:|:------------:|:-------:|
-| Zero dependencies        | ✓         | ✗            | ✗       |
-| Full TS inference        | ✓         | ✓            | partial |
-| Aggregated errors        | ✓         | ✓            | ✓       |
-| Secret masking in errors | ✓         | ✗            | ✗       |
-| `.env.example` generator | ✓         | ✗            | ✗       |
-| ESM + CJS dual build     | ✓         | ✓            | ✓       |
+|--------------------------|:-------:|:------------:|:-------:|
+| Zero dependencies        | ✓       | ✗ (2 packages) | ✗ (`tslib`) |
+| Full TS inference        | ✓       | ✓            | ✓       |
+| Aggregated errors        | ✓       | ✓            | ✓       |
+| Secret masking in errors | ✓       | n/a¹         | ✗²      |
+| `.env.example` generator | ✓       | ✗            | ✗       |
+| ESM + CJS dual build     | ✓       | ✓            | CJS only |
+
+Compared against zod 4.6, dotenv 18.0 and envalid 8.2 (October 2026).
+¹ zod's default messages do not include the input value, so there is nothing to mask.
+² envalid's built-in validators include the raw input in their messages (except `url`), with no option to hide it.
 
 ---
 
@@ -156,7 +160,7 @@ const env = check(
 
 ### Custom validation
 
-Every field type accepts a `validate` function for checks the built-in options don't cover. Return `true` to pass, or a string to fail with that message:
+Every field type accepts a `validate` function for checks the built-in options don't cover. Return `true` to pass, or a string to fail with that message. Any other return value, or a thrown error, also fails:
 
 ```ts
 const env = check({
@@ -273,6 +277,12 @@ Additional options per type:
 
 **Defaults are validated** like provided values: an enum default outside `values`, a number default outside `min`/`max`, a string default that fails `pattern`, an invalid `url` default, or one rejected by `validate` makes `check()` fail with a `(default value)` error.
 
+**Numbers** must be plain decimals, optionally with an exponent (`42`, `-1.5`, `1e3`). Hex, binary, octal and `Infinity` are rejected.
+
+**Arrays** with no items after splitting (`TAGS=,`) are treated as missing, like empty values.
+
+**URLs** must include a scheme: `localhost:3000` is rejected, use `http://localhost:3000`.
+
 **Boolean coercion** accepts: `true / false`, `1 / 0`, `yes / no`, `on / off` (case-insensitive, surrounding whitespace ignored).
 
 ---
@@ -281,7 +291,7 @@ Additional options per type:
 
 ### `check(schema, options?)`
 
-Validates `process.env` (or `options.env`) against the schema and returns a fully typed object.
+Validates `process.env` (or `options.env`) against the schema and returns a fully typed, frozen object.
 
 Throws with an aggregated error message if any variables fail. Pass `options.onError` to handle errors yourself.
 
