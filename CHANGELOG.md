@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README install/import examples use the published name `@gavincettolo/envault`
 
 ### Changed
+- Default values are validated like provided values (`values`, `min`/`max`, `pattern`, URL syntax, `validate`); an invalid default now makes `check()` fail with a `(default value)` error instead of being returned silently
 - Tests run on the built-in `node:test` runner and are type-checked by `pnpm run lint`
 - CI runs on Node 20, 22 and 24 and checks the packed tarball with attw and publint
 - Publish workflow verifies that the tag matches `package.json` and pins npm to major 11

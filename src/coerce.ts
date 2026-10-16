@@ -1,5 +1,9 @@
 import type { FieldDef, ValidationError } from "./types.js";
 
+type Outcome =
+  | { value: unknown; error?: never }
+  | { value?: never; error: ValidationError };
+
 function makeError(
   key: string,
   message: string,
@@ -10,7 +14,10 @@ function makeError(
 }
 
 function formatValue(value: unknown): string {
-  return typeof value === "string" ? value : JSON.stringify(value);
+  if (typeof value === "string") return value;
+  // String() keeps NaN and Infinity readable; JSON.stringify turns them into "null".
+  if (typeof value === "number") return String(value);
+  return JSON.stringify(value);
 }
 
 /**
@@ -29,9 +36,7 @@ function runCustomValidate(
   key: string,
   value: unknown,
   field: FieldDef,
-):
-  | { value: unknown; error?: never }
-  | { value?: never; error: ValidationError } {
+): Outcome {
   if (!("validate" in field) || !field.validate) return { value };
   const isSecret = "secret" in field && field.secret === true;
   const fail = (message: string) => ({
@@ -62,41 +67,18 @@ function isRequiredNow(field: FieldDef, environment: string | undefined): boolea
   return false;
 }
 
-export function coerceAndValidate(
-  key: string,
-  raw: string | undefined,
-  field: FieldDef,
-  environment?: string,
-):
-  | { value: unknown; error?: never }
-  | { value?: never; error: ValidationError } {
+/**
+ * Turns a raw env string into the field's type. Only failures to parse the
+ * string are reported here; constraints are checked by `checkConstraints`.
+ */
+function coerce(key: string, raw: string, field: FieldDef): Outcome {
   const isSecret = "secret" in field && field.secret === true;
 
-  // ── Missing value ───────────────────────────────────────────────────────────
-  if (raw === undefined || raw === "") {
-    if ("default" in field && field.default !== undefined) {
-      return { value: field.default };
-    }
-    if (isRequiredNow(field, environment)) {
-      return { error: makeError(key, `Missing required variable "${key}"`) };
-    }
-    return { value: undefined };
-  }
-
-  // ── Per-type coercion & validation ──────────────────────────────────────────
   switch (field.type) {
-    case "string": {
-      if (field.pattern && !matches(field.pattern, raw)) {
-        return {
-          error: makeError(
-            key,
-            `"${key}" does not match pattern ${field.pattern}`,
-            isSecret ? undefined : raw,
-          ),
-        };
-      }
-      return runCustomValidate(key, raw, field);
-    }
+    case "string":
+    case "url":
+    case "enum":
+      return { value: raw };
 
     case "array": {
       const delimiter = field.delimiter ?? ",";
@@ -104,18 +86,83 @@ export function coerceAndValidate(
         .split(delimiter)
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
-      return runCustomValidate(key, items, field);
+      return { value: items };
+    }
+
+    case "number":
+      // Number("  ") is 0: treat whitespace-only as NaN so it is rejected.
+      return { value: raw.trim() === "" ? NaN : Number(raw) };
+
+    case "boolean": {
+      const lower = raw.toLowerCase();
+      if (["true", "1", "yes", "on"].includes(lower)) return { value: true };
+      if (["false", "0", "no", "off"].includes(lower)) return { value: false };
+      return {
+        error: makeError(
+          key,
+          `"${key}" must be a boolean (true/false/1/0/yes/no/on/off, got "${raw}")`,
+          raw,
+        ),
+      };
+    }
+
+    case "json": {
+      try {
+        return { value: JSON.parse(raw) as unknown };
+      } catch {
+        return {
+          error: makeError(
+            key,
+            `"${key}" must be valid JSON`,
+            isSecret ? undefined : raw,
+          ),
+        };
+      }
+    }
+
+    default: {
+      const _exhaustive: never = field;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
+ * Checks a typed value against the field's constraints, then runs the custom
+ * `validate` hook. Used for both coerced env values and schema defaults.
+ * `shown` is the value as it should appear in error output.
+ */
+function checkConstraints(
+  key: string,
+  value: unknown,
+  field: FieldDef,
+  shown: string,
+): Outcome {
+  const isSecret = "secret" in field && field.secret === true;
+
+  switch (field.type) {
+    case "string": {
+      if (field.pattern && !matches(field.pattern, value as string)) {
+        return {
+          error: makeError(
+            key,
+            `"${key}" does not match pattern ${field.pattern}`,
+            isSecret ? undefined : shown,
+          ),
+        };
+      }
+      break;
     }
 
     case "number": {
-      // Number("  ") is 0 and Number("Infinity") is Infinity: reject both.
-      const n = raw.trim() === "" ? NaN : Number(raw);
+      const n = value as number;
+      // Rejects NaN (unparseable input) as well as Infinity.
       if (!Number.isFinite(n)) {
         return {
           error: makeError(
             key,
-            `"${key}" must be a finite number (got "${isSecret ? "***" : raw}")`,
-            isSecret ? undefined : raw,
+            `"${key}" must be a finite number (got "${isSecret ? "***" : shown}")`,
+            isSecret ? undefined : shown,
           ),
         };
       }
@@ -135,75 +182,71 @@ export function coerceAndValidate(
           ),
         };
       }
-      return runCustomValidate(key, n, field);
-    }
-
-    case "boolean": {
-      const lower = raw.toLowerCase();
-      if (["true", "1", "yes", "on"].includes(lower)) {
-        return runCustomValidate(key, true, field);
-      }
-      if (["false", "0", "no", "off"].includes(lower)) {
-        return runCustomValidate(key, false, field);
-      }
-      return {
-        error: makeError(
-          key,
-          `"${key}" must be a boolean (true/false/1/0/yes/no/on/off, got "${raw}")`,
-          raw,
-        ),
-      };
+      break;
     }
 
     case "url": {
       try {
         new (globalThis as unknown as { URL: new (s: string) => unknown }).URL(
-          raw,
+          value as string,
         );
-        return runCustomValidate(key, raw, field);
       } catch {
         return {
           error: makeError(
             key,
-            `"${key}" must be a valid URL (got "${isSecret ? "***" : raw}")`,
-            isSecret ? undefined : raw,
+            `"${key}" must be a valid URL (got "${isSecret ? "***" : shown}")`,
+            isSecret ? undefined : shown,
           ),
         };
       }
+      break;
     }
 
     case "enum": {
-      if (!field.values.includes(raw)) {
+      if (!field.values.includes(value as string)) {
         return {
           error: makeError(
             key,
-            `"${key}" must be one of [${field.values.join(", ")}] (got "${raw}")`,
-            raw,
+            `"${key}" must be one of [${field.values.join(", ")}] (got "${shown}")`,
+            shown,
           ),
         };
       }
-      return runCustomValidate(key, raw, field);
-    }
-
-    case "json": {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return {
-          error: makeError(
-            key,
-            `"${key}" must be valid JSON`,
-            isSecret ? undefined : raw,
-          ),
-        };
-      }
-      return runCustomValidate(key, parsed, field);
-    }
-
-    default: {
-      const _exhaustive: never = field;
-      return _exhaustive;
+      break;
     }
   }
+
+  return runCustomValidate(key, value, field);
+}
+
+export function coerceAndValidate(
+  key: string,
+  raw: string | undefined,
+  field: FieldDef,
+  environment?: string,
+): Outcome {
+  // ── Missing value: fall back to the default, validated like any value ──────
+  if (raw === undefined || raw === "") {
+    if ("default" in field && field.default !== undefined) {
+      const outcome = checkConstraints(
+        key,
+        field.default,
+        field,
+        formatValue(field.default),
+      );
+      if (outcome.error) {
+        outcome.error.message += " (default value)";
+      }
+      return outcome;
+    }
+    if (isRequiredNow(field, environment)) {
+      return { error: makeError(key, `Missing required variable "${key}"`) };
+    }
+    return { value: undefined };
+  }
+
+  // ── Provided value: coerce, then validate ──────────────────────────────────
+  const coerced = coerce(key, raw, field);
+  if (coerced.error) return coerced;
+  return checkConstraints(key, coerced.value, field, raw);
 }

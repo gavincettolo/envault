@@ -1,7 +1,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { check } from "../src/check.js";
-import type { ValidationError } from "../src/types.js";
+import type { Schema, ValidationError } from "../src/types.js";
 
 describe("check()", () => {
   test("returns string value", () => {
@@ -435,5 +435,95 @@ describe("check()", () => {
       { env: { ORIGINS: "a.com|b.com" } },
     );
     assert.deepEqual(env.ORIGINS, ["a.com", "b.com"]);
+  });
+
+  describe("default values are validated", () => {
+    const messagesFor = (schema: Schema): string[] => {
+      let messages: string[] = [];
+      assert.throws(
+        () =>
+          check(schema, {
+            env: {},
+            onError: (errors) => {
+              messages = errors.map((e) => e.message);
+              throw new Error("handled");
+            },
+          }),
+        /handled/,
+      );
+      return messages;
+    };
+
+    test("enum default outside values", () => {
+      assert.deepEqual(
+        messagesFor({ E: { type: "enum", values: ["a", "b"], default: "zzz" } }),
+        ['"E" must be one of [a, b] (got "zzz") (default value)'],
+      );
+    });
+
+    test("number default outside min/max", () => {
+      assert.deepEqual(
+        messagesFor({
+          LOW: { type: "number", min: 1, default: 0 },
+          HIGH: { type: "number", max: 10, default: 11 },
+          NAN: { type: "number", default: NaN },
+        }),
+        [
+          '"LOW" must be ≥ 1 (got 0) (default value)',
+          '"HIGH" must be ≤ 10 (got 11) (default value)',
+          '"NAN" must be a finite number (got "NaN") (default value)',
+        ],
+      );
+    });
+
+    test("string default failing pattern", () => {
+      assert.deepEqual(
+        messagesFor({ S: { type: "string", pattern: /^[a-z]+$/, default: "UP" } }),
+        ['"S" does not match pattern /^[a-z]+$/ (default value)'],
+      );
+    });
+
+    test("url default that is not a URL", () => {
+      assert.deepEqual(
+        messagesFor({ U: { type: "url", default: "not a url" } }),
+        ['"U" must be a valid URL (got "not a url") (default value)'],
+      );
+    });
+
+    test("default rejected by validate hook", () => {
+      assert.deepEqual(
+        messagesFor({
+          P: {
+            type: "number",
+            default: 80,
+            validate: (n: number) =>
+              n > 1024 ? true : "must be a non-privileged port",
+          },
+        }),
+        ['"P" must be a non-privileged port (default value)'],
+      );
+    });
+
+    test("secret default is not leaked", () => {
+      assert.deepEqual(
+        messagesFor({
+          K: { type: "number", secret: true, min: 100, default: 42 },
+        }),
+        ['"K" must be ≥ 100 (default value)'],
+      );
+    });
+
+    test("valid defaults are returned unchanged", () => {
+      const env = check(
+        {
+          E: { type: "enum", values: ["a", "b"], default: "b" },
+          N: { type: "number", min: 1, max: 10, default: 5 },
+          S: { type: "string", pattern: /^[a-z]+$/g, default: "ok" },
+          J: { type: "json", default: { a: 1 } },
+        },
+        { env: {} },
+      );
+      assert.deepEqual(env, { E: "b", N: 5, S: "ok", J: { a: 1 } });
+    });
   });
 });
