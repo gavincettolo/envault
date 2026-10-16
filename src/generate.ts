@@ -32,7 +32,9 @@ function placeholderFor(key: string, field: FieldDef): string {
 function commentFor(field: FieldDef): string[] {
   const lines: string[] = [];
   if ("description" in field && field.description) {
-    lines.push(`# ${field.description}`);
+    for (const line of field.description.split(/\r?\n/)) {
+      lines.push(`# ${line}`.trimEnd());
+    }
   }
   const meta: string[] = [];
   if ("required" in field && field.required) meta.push("required");

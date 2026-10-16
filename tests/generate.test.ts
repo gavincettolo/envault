@@ -56,4 +56,14 @@ describe("generateExample()", () => {
     assert.match(out, /^TAGS=a\|b$/m);
     assert.match(out, /^HOSTS=x,y$/m);
   });
+
+  test("comments every line of a multi-line description", () => {
+    const out = generateExample({
+      PORT: { type: "number", default: 3000, description: "HTTP port\nUsed by the API" },
+    });
+    assert.match(out, /^# HTTP port\n# Used by the API$/m);
+    for (const line of out.split("\n")) {
+      assert.ok(line === "" || line.startsWith("#") || line.includes("="), line);
+    }
+  });
 });
