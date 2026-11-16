@@ -423,24 +423,33 @@ describe("check()", () => {
   });
 
   test("a throwing validate hook does not leak secret values", () => {
-    assert.throws(
-      () =>
-        check(
-          {
-            TOKEN: {
-              type: "string",
-              secret: true,
-              validate: () => {
-                throw "not an Error";
+    const hooks = [
+      () => {
+        throw "not an Error";
+      },
+      (v: string) => {
+        throw new Error(`bad token ${v}`);
+      },
+    ];
+    for (const validate of hooks) {
+      let errors: ValidationError[] = [];
+      assert.throws(
+        () =>
+          check(
+            { TOKEN: { type: "string", secret: true, validate } },
+            {
+              env: { TOKEN: "hunter2" },
+              onError: (e) => {
+                errors = e;
+                throw new Error("handled");
               },
             },
-          },
-          { env: { TOKEN: "hunter2" } },
-        ),
-      (e: Error) =>
-        e.message.includes('"TOKEN" validate threw: not an Error') &&
-        !e.message.includes("hunter2"),
-    );
+          ),
+        /handled/,
+      );
+      assert.equal(errors[0]?.message, '"TOKEN" validate threw');
+      assert.equal(errors[0]?.value, undefined);
+    }
   });
 
   test("coerces array with default delimiter", () => {
