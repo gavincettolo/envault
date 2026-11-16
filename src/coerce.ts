@@ -60,6 +60,8 @@ function runCustomValidate(
     result = (field.validate as (v: unknown) => true | string)(value);
   } catch (err) {
     // A throwing hook must not abort aggregation of the other fields.
+    // Its message may embed the value (`bad token ${v}`), so hide it for secrets.
+    if (isSecret) return fail("validate threw");
     return fail(
       `validate threw: ${err instanceof Error ? err.message : String(err)}`,
     );
