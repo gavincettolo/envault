@@ -639,6 +639,34 @@ describe("check()", () => {
     }
   });
 
+  test("an unknown field type is a validation error", () => {
+    const schema = {
+      S: { type: "strng" },
+      T: { type: "strng", default: "x" },
+      N: { type: "number", required: true },
+    } as unknown as Schema;
+    let errors: ValidationError[] = [];
+    assert.throws(
+      () =>
+        check(schema, {
+          env: { S: "x" },
+          onError: (e) => {
+            errors = e;
+            throw new Error("handled");
+          },
+        }),
+      /handled/,
+    );
+    assert.deepEqual(
+      errors.map((e) => e.message),
+      [
+        '"S" has unknown type "strng"',
+        '"T" has unknown type "strng"',
+        'Missing required variable "N"',
+      ],
+    );
+  });
+
   test("an array value with no items is treated as missing", () => {
     assert.throws(
       () =>

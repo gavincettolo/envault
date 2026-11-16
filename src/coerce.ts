@@ -9,6 +9,22 @@ const DECIMAL = /^\s*[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?\s*$/;
  */
 const HOST_PORT_WITHOUT_SCHEME = /^[^:/?#]+:\d{1,5}(?:[/?#]|$)/;
 
+/**
+ * Every `FieldDef["type"]`: the Record forces this list to stay in sync with
+ * the union, so a new field type cannot be forgotten here.
+ */
+const KNOWN_TYPES: ReadonlySet<string> = new Set(
+  Object.keys({
+    string: true,
+    number: true,
+    boolean: true,
+    url: true,
+    enum: true,
+    json: true,
+    array: true,
+  } satisfies Record<FieldDef["type"], true>),
+);
+
 type Outcome =
   | { value: unknown; error?: never }
   | { value?: never; error: ValidationError };
@@ -270,6 +286,14 @@ export function coerceAndValidate(
   field: FieldDef,
   environment?: string,
 ): Outcome {
+  // TypeScript rejects a misspelled type, but a JS caller's typo would
+  // otherwise be ignored silently (and never looked at when the var is unset).
+  if (!KNOWN_TYPES.has(field.type)) {
+    return {
+      error: makeError(key, `"${key}" has unknown type "${String(field.type)}"`),
+    };
+  }
+
   if (raw === undefined || raw === "") {
     return resolveMissing(key, field, environment);
   }
