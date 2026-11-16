@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `validate` hook that throws is reported as a validation error instead of aborting `check()` and hiding the other errors
 - A throwing `validate` hook on a `secret: true` field no longer includes the thrown message, which could embed the secret value
 - A field with an unknown `type` (e.g. a typo from a JavaScript caller) fails with `"KEY" has unknown type "..."` instead of being ignored
+- `array` and `json` defaults are returned as copies, so mutating the result no longer changes the schema's `default` for later `check()` calls
 - Number fields reject whitespace-only values and `Infinity` (previously coerced to `0` / `Infinity`)
 - `generateExample()` quotes values containing `#`, line breaks, surrounding whitespace or a leading quote, so dotenv reads them back unchanged instead of truncating them
 - `generateExample()` serializes `json` defaults with `JSON.stringify` instead of printing `[object Object]`

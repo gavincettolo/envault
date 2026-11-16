@@ -271,6 +271,12 @@ function resolveMissing(
     );
     if (outcome.error) {
       outcome.error.message += " (default value)";
+      return outcome;
+    }
+    // The result is only shallowly frozen: hand out a copy so mutating it
+    // cannot change the schema's default for later check() calls.
+    if (field.type === "array" || field.type === "json") {
+      return { value: structuredClone(outcome.value) };
     }
     return outcome;
   }
