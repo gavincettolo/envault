@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `check()` returns a frozen object, so the runtime matches the readonly `Env<S>` type
 - Number fields accept only decimal notation (with optional exponent); hex, binary and octal literals are rejected
 - URL fields reject `host:port` values without a scheme, such as `localhost:3000`
+- URL fields also reject scheme-less `host:port` values whose host has no dot, such as the Docker Compose service names `db:5432` or `redis:6379/0`
 - An array value with no items after splitting (e.g. `,`) is treated as missing: it uses the default or fails if required
 - Default values are validated like provided values (`values`, `min`/`max`, `pattern`, URL syntax, `validate`); an invalid default now makes `check()` fail with a `(default value)` error instead of being returned silently
 - Tests run on the built-in `node:test` runner and are type-checked by `pnpm run lint`

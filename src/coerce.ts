@@ -3,10 +3,11 @@ import type { FieldDef, ValidationError } from "./types.js";
 const DECIMAL = /^\s*[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?\s*$/;
 
 /**
- * "localhost:3000" or "db.internal:5432" parse as URLs whose scheme is the
- * host name. Catch that common mistake of leaving out the scheme.
+ * "localhost:3000", "db.internal:5432" or a Compose service like "db:5432"
+ * parse as URLs whose scheme is the host name. Catch that common mistake of
+ * leaving out the scheme: a real scheme is never followed by a bare port.
  */
-const HOST_PORT_WITHOUT_SCHEME = /^(?:localhost|[^:/?#]*\.[^:/?#]*):\d+(?:[/?#]|$)/i;
+const HOST_PORT_WITHOUT_SCHEME = /^[^:/?#]+:\d{1,5}(?:[/?#]|$)/;
 
 type Outcome =
   | { value: unknown; error?: never }
