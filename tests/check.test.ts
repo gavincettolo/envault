@@ -667,6 +667,20 @@ describe("check()", () => {
     );
   });
 
+  test("array and json defaults are returned as copies", () => {
+    const schema = {
+      TAGS: { type: "array", default: ["a"] },
+      CFG: { type: "json", default: { nested: { n: 1 } } },
+    } satisfies Schema;
+    const first = check(schema, { env: {} });
+    (first.TAGS as string[]).push("b");
+    (first.CFG as { nested: { n: number } }).nested.n = 2;
+    const second = check(schema, { env: {} });
+    assert.deepEqual(second.TAGS, ["a"]);
+    assert.deepEqual(second.CFG, { nested: { n: 1 } });
+    assert.deepEqual(schema.TAGS.default, ["a"]);
+  });
+
   test("an array value with no items is treated as missing", () => {
     assert.throws(
       () =>
