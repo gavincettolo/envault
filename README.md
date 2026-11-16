@@ -45,7 +45,9 @@ You can wire those together yourself — but that's 2 dependencies, ~20 lines of
 | ESM + CJS dual build     | ✓       | ✓            | CJS only |
 
 Compared against zod 4.6, dotenv 18.0 and envalid 8.2 (October 2026).
+
 ¹ zod's default messages do not include the input value, so there is nothing to mask.
+
 ² envalid's built-in validators include the raw input in their messages (except `url`), with no option to hide it.
 
 ---
