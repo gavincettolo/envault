@@ -283,7 +283,7 @@ Additional options per type:
 
 **Arrays** with no items after splitting (`TAGS=,`) are treated as missing, like empty values.
 
-**URLs** must include a scheme: `localhost:3000` is rejected, use `http://localhost:3000`.
+**URLs** must include a scheme: `localhost:3000` or `db:5432` is rejected, use `http://localhost:3000` or `postgres://db:5432`.
 
 **Boolean coercion** accepts: `true / false`, `1 / 0`, `yes / no`, `on / off` (case-insensitive, surrounding whitespace ignored).
 

@@ -590,7 +590,15 @@ describe("check()", () => {
   });
 
   test("rejects host:port values that are missing a URL scheme", () => {
-    for (const v of ["localhost:3000", "db.internal:5432/app", "127.0.0.1:80"]) {
+    for (const v of [
+      "localhost:3000",
+      "db.internal:5432/app",
+      "127.0.0.1:80",
+      "db:5432",
+      "redis:6379/0",
+      "api:8080?x=1",
+      "web:80#top",
+    ]) {
       assert.throws(
         () => check({ U: { type: "url" } }, { env: { U: v } }),
         /must be a valid URL/,
@@ -601,7 +609,11 @@ describe("check()", () => {
       "http://localhost:3000",
       "postgres://db.internal:5432/app",
       "mailto:a@example.com",
+      "mailto:a@b.c",
       "tel:5551234",
+      "http://db:5432",
+      "postgres://user:pw@db:5432/x",
+      "redis://redis:6379/0",
     ]) {
       assert.equal(check({ U: { type: "url" } }, { env: { U: v } }).U, v);
     }
